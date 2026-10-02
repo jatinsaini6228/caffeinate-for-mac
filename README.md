@@ -1,50 +1,118 @@
-# caffeinate-for-mac
-A native, ultra-lightweight macOS menu bar &amp; desktop widget utility that prevents your Mac from sleeping. Built with Swift 6, SwiftUI, native IOKit power assertions, WidgetKit, and low-battery protection.
+# ☕ Caffeinate for macOS
 
+A native, ultra-lightweight macOS menu bar utility that prevents your Mac from sleeping. Built with **Swift 6**, **SwiftUI**, **AppKit**, and Apple's native **IOKit** and **WidgetKit** frameworks.
 
-# Brief Project Description
-Caffeinate is a modern, privacy-focused macOS system utility designed to keep your Mac awake on your exact terms. Unlike legacy utilities that spawn dangling background shell processes (/usr/bin/caffeinate), Caffeinate communicates directly with Apple's Darwin
-kernel using in-process IOKit power assertions for instantaneous response and zero CPU overhead.
+---
 
-#### Key Highlights
+## ✨ Features
 
-  • 🎨 Modern Visual Identity: Custom glassmorphism squircle app icon (AppIcon.icns) with neon amber-cyan espresso steam and dynamic status bar SF Symbols.
-  • 🚀 First-Launch Popup Dashboard: Floating translucent SwiftUI window (NSPanel) that greets users upon opening with large glowing toggle controls, mode selectors, and duration presets.
-  • 🧩 Dual Widget Support:
-      • Menu Bar Interactive Widget Popover: Quick Control Center-style card attached to the status bar icon.
-      • macOS WidgetKit Extension (CaffeinateWidget.appex): Native desktop & Notification Center widget (.systemSmall and .systemMedium) in macOS's Widget Gallery / Widget list with one-tap toggle.
-  • 🖥️ Dual Sleep Modes: Choose between Display & System Sleep (screen stays awake) and System Sleep Only (screen turns off while background tasks, renders, and downloads continue).
-  • ⏱️ Duration Presets: Quick options for Indefinite, 15m, 30m, 1h, 2h, and 4h with live 1Hz countdown display.
-  • 🔋 Automated Low Battery Protection: Continuously monitors hardware power sources via IOKit.ps and automatically releases wake locks if battery drops to ≤ 20% while discharging.
-  • 🔒 100% Private: Zero analytics, zero tracking, and zero outbound network connections.
+- **🎨 Modern App Logo & Visual Identity**:
+  - High-resolution `.icns` and PNG asset featuring a glowing neon espresso cup with glassmorphism squircle styling (`Resources/AppIcon.icns`).
+  - Appears in Finder, macOS Notification Center, and inside the Dashboard.
+- **🚀 First-Launch Popup UI (Interactive Dashboard)**:
+  - Automatically opens when the application starts up.
+  - Floating translucent window with large one-tap activate/deactivate toggle, animated glowing aura, and live status badge.
+  - Select sleep modes: **Display & System Sleep** vs. **System Sleep Only**.
+  - Quick duration presets: **Indefinite**, **15m**, **30m**, **1h**, **2h**, **4h**.
+  - Battery gauge with **Auto-disable below 20% battery** protection toggle.
+  - "Show on launch" preference checkbox and "Minimize to Menu Bar" button.
+- **🧩 Dual Widget Support**:
+  1. **Menu Bar Popover Widget**: Click the coffee cup in your status bar to open a compact Control Center-style widget card.
+  2. **macOS WidgetKit Extension (`CaffeinateWidget.appex`)**: Native desktop & Notification Center widget (`.systemSmall` and `.systemMedium`) in macOS's **Widget Gallery / Widget list**, with live status, battery indicator, and one-tap toggle.
+- **⚡ In-Process IOKit Assertions**: Uses native Apple `IOPMAssertionCreateWithName` and `IOPMAssertionRelease` (`kIOPMAssertionTypePreventUserIdleDisplaySleep` and `kIOPMAssertionTypePreventUserIdleSystemSleep`). Zero external process spawns, instant response, and zero CPU overhead.
+- **🔋 Low Battery Protection**:
+  - Real-time battery status (`IOKit.ps` monitor).
+  - Automatically disables sleep prevention when battery level drops $\le 20\%$ while discharging.
+- **🔔 Native System Notifications**: Modern `UserNotifications` alert when scheduled timers expire or low battery protection triggers.
 
+---
 
-### Technologies Included
-Layer / Domain                                    | Technology                                        | Purpose in Project
-  ---------------------------------------------------|---------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------
-   Language & Toolchain                              | Swift 6                                           | Modern, memory-safe language leveraging strict concurrency and @MainActor state dispatching.
-   Build System                                      | Swift Package Manager (SPM)                       | Modular target architecture (CaffeinateKit, Caffeinate, CaffeinateTestRunner).
-   Kernel Power Management                           | IOKit (IOKit.pwr_mgt)                             | Calls IOPMAssertionCreateWithName and IOPMAssertionRelease for kIOPMAssertionTypePreventUserIdleDisplaySleep and kIOPMAssertionTypePreventUserIdleSystemSleep.
-   Hardware Telemetry                                | IOKit (IOKit.ps)                                  | Queries IOPSCopyPowerSourcesInfo for real-time AC vs. battery status, charging state, and remaining percentage.
-   Presentation Framework                            | SwiftUI                                           | Powers the modern floating Dashboard UI (DashboardView), the Menu Bar Popover (PopoverWidgetView), and the WidgetKit views.
-   System Windowing & Shell                          | AppKit                                            | Manages NSStatusItem in the system menu bar, floating NSPanel (.hudWindow vibrancy), and NSPopover.
-   Desktop & Sidebar Widgets                         | WidgetKit (WidgetBundle)                          | Compiles into a standalone .appex extension bundle providing interactive Small and Medium widgets for macOS Sonoma & Sequoia.
-   Cross-Process IPC                                 | JSON & DistributedNotificationCenter              | Syncs real-time state between the main app and the sandboxed WidgetKit extension (state.json + WidgetCenter.reloadAllTimelines()).
-   Deep-Linking & Shortcuts                          | Custom URL Scheme (caffeinate://)                 | Supports programmatic actions (caffeinate://toggle, activate, dashboard) from widgets, terminal, or Raycast/Alfred.
-   System Notifications                              | UserNotifications Framework                       | Dispatches native macOS notification banners when scheduled sessions end or battery cutoffs trigger.
-   Packaging & Code Signing                          | Shell + codesign                                  | Automated bundling script (scripts/build_app.sh) generating a signed, distribution-ready Caffeinate.app bundle.
-  ──────
+## 🏗️ Architecture
 
+```
+projects/caffeinate/
+├── Package.swift                         # Swift Package Manager manifest
+├── Resources/
+│   ├── AppIcon.icns                      # macOS multi-resolution icon bundle
+│   └── app_logo.png                      # High-resolution PNG logo
+├── Sources/
+│   ├── Caffeinate/                       # Executable target
+│   │   └── main.swift                    # App bootstrap & signal handlers
+│   ├── CaffeinateKit/                    # Core library
+│   │   ├── AppDelegate.swift             # AppKit lifecycle, URL router, popup trigger
+│   │   ├── AppState.swift                # Reactive ObservableObject state model
+│   │   ├── BatteryMonitor.swift          # IOKit.ps power source detection & cutoff
+│   │   ├── DashboardView.swift           # First-launch popup SwiftUI dashboard
+│   │   ├── DashboardWindowController.swift # Floating NSPanel window manager
+│   │   ├── PopoverWidgetView.swift       # Menu bar interactive widget popover
+│   │   ├── PowerManager.swift            # IOKit.pwr_mgt sleep assertion controller
+│   │   ├── SharedStateManager.swift      # Cross-process JSON sync (~/Library/Application Support/Caffeinate/state.json)
+│   │   ├── StatusBarController.swift     # NSStatusItem, NSPopover & context menu
+│   │   └── TimerManager.swift            # Countdown timers, presets & formatting
+│   ├── CaffeinateWidget/                 # WidgetKit Extension
+│   │   └── CaffeinateWidget.swift        # Desktop & Notification Center widget
+│   └── CaffeinateTestRunner/             # Automated test suite (all 8 suites)
+│       └── main.swift
+└── scripts/
+    └── build_app.sh                      # Release bundler for Caffeinate.app & CaffeinateWidget.appex
+```
 
-  ### 🚀 Quick Start
+---
 
-    ```bash
-    # Clone the repository
-    git clone https://github.com/your-username/caffeinate.git
-    cd caffeinate
+## 🚀 Building & Running
 
-    # Build the release .app bundle (includes Desktop Widget)
-    ./scripts/build_app.sh
+### Option 1: Package as a Standalone macOS App Bundle (`Caffeinate.app`)
+Run the packaging script to generate a signed release bundle with the embedded WidgetKit extension:
+```bash
+./scripts/build_app.sh
+```
 
-    # Launch Caffeinate (Dashboard will appear on launch)
-    open build/Caffeinate.app
+To launch the app (will open the Popup Dashboard UI automatically):
+```bash
+open build/Caffeinate.app
+```
+
+To install into `/Applications` (enables the widget in macOS Desktop & Notification Center "Edit Widgets" list):
+```bash
+cp -R build/Caffeinate.app /Applications/
+```
+
+### Option 2: Swift Package Manager (CLI / Development)
+Run directly from terminal during development:
+```bash
+swift run Caffeinate
+```
+
+---
+
+## 🧪 Automated Tests
+
+Run the comprehensive 8-suite automated test runner:
+```bash
+swift run CaffeinateTestRunner
+```
+
+Verified test suites:
+1. `PowerManager` activation and mode switching (`display` vs `system`).
+2. `PowerManager` toggle behavior.
+3. `BatteryStatus` string formatting across all AC/battery states.
+4. `BatteryMonitor` hardware power source detection.
+5. `DurationOption` presets, second conversions, and formatting.
+6. `TimerManager` countdown, tick callback, and auto-stop lifecycle.
+7. System `pmset` powerd registry verification (confirms assertion registration and clean release).
+8. `SharedStateManager` cross-process JSON encoding, disk persistence, and decoding.
+
+---
+
+## 🔍 System Verification via Terminal
+
+You can verify that Caffeinate is actively holding system sleep assertions at any time using macOS's built-in `pmset`:
+```bash
+pmset -g assertions
+```
+
+When active, you will observe:
+```text
+PreventUserIdleDisplaySleep named: "Caffeinate Sleep Prevention"
+```
+When deactivated or expired, the assertion is immediately released from the kernel power daemon.
